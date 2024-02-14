@@ -85,4 +85,8 @@ Dict{String, Any} with 10 entries:
   "reef model"                    => "ReefMod Matlab"
   "given filename description"    => "filename of matfile used to create this netcdf"
   "metadata filename description" => "filename contained in the metadata of original matfile"
+  "reef_ids"                      => ["<id>"....]
+  "n_scenarios"                   => 200 # sum(scenerios per earth model)
+  "n_locations"                   => 3806
+
 ```

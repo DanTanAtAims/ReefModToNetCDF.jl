@@ -119,6 +119,10 @@ function _construct_properties(
     scenario_per_model = _extract_n_scenarios(dataset)
     scenario_range_beginning = Vector{Int}(undef, length(filenames))
     scenario_range_ending = Vector{Int}(undef, length(filenames))
+    reef_ids = _extract_reef_IDs(dataset[1]) # assume duplicate
+
+    n_scenarios::Int = sum(scenario_per_model)
+    n_locations::Int = length(reef_ids) 
 
     begin_index = 1
     for i ∈ 1:length(filenames)
@@ -142,38 +146,33 @@ function _construct_properties(
         "earth system model order" => earth_models,
         "scenarios per earth model" => scenario_per_model,
         "scenario start index" => scenario_range_beginning,
-        "scenario end index" => scenario_range_ending
+        "scenario end index" => scenario_range_ending,
+        "reef_ids" => reef_ids,
+        "n_scenarios" => n_scenarios,
+        "n_locations" => n_locations
     )
 end
 
+
 """
-    _extract_reef_IDs(mat_dict::Dict{String, Any})::YAXArray
+_extract_reef_IDs(mat_dict::Dict{String, Any})::Vetcor{String}
 
 Extract Reef IDs from dataset metadata.
 """
-function _extract_reef_IDs(mat_dict::Dict{String,Any})::YAXArray
+function _extract_reef_IDs(mat_dict::Dict{String,Any})::Vector{String}
     n_locations = 0
 
     if !haskey(mat_dict, "META")
         @info "Given matfile does not have 'META' key. Returning empty YAXArray"
-        return YAXArray((), [])
+        return []
     elseif !haskey(mat_dict["META"], "reef_ID")
         @info "Given matfile META dict does not have 'reef Id' key. Returning index as id for reef area"
         n_locations = mat_dict["META"]["nb_reefs"]
-        return YAXArray((Dim{:location}(range(1, n_locations, length=n_locations))), [Int(i) for i in range(1, n_locations, n_locations)])
+        return string.(1:n_locations)
     end
     (n_locations, _) = size(mat_dict["META"]["reef_ID"])
 
-    axlist::Tuple = (
-        Dim{:location}(range(1, n_locations, length=n_locations)),
-    )
-
-    props::Dict{String,Any} = Dict(
-        "variable" => "reef ID"
-    )
-
-    return YAXArray(axlist, Int.(dropdims(mat_dict["META"]["reef_ID"], dims=2)), props)
-
+    return string.(dropdims(mat_dict["META"]["reef_ID"], dims=2))
 end
 
 """
@@ -399,7 +398,6 @@ function to_NetCDF(
 )::Nothing
     filenames::Vector{String} = _get_matfiles(directory, climate_scenario)
     matfiles = [read(matopen(fn)) for fn in filenames]
-    props = _construct_properties(matfiles, filenames, climate_scenario)
 
     arr_list = Vector{YAXArray}(undef, length(variable_keys) + 4)
     first_year::Float64 = matfiles[1]["YEARS"][1, 1]
@@ -407,15 +405,12 @@ function to_NetCDF(
         arr_list[ind] = _extract_variable(matfiles, key, first_year)
     end
 
-    nongrazable::YAXArray = _extract_nongrazable_area(matfiles)
-    reef_area::YAXArray = _extract_reef_area(matfiles[1]) # asuumed duplicates
-    lat::YAXArray = _extract_lat(matfiles[1])
-    lon::YAXArray = _extract_lon(matfiles[1])
+    arr_list[length(variable_keys) + 1] = _extract_nongrazable_area(matfiles)
+    arr_list[length(variable_keys) + 2] = _extract_reef_area(matfiles[1]) # asuumed duplicates
+    arr_list[length(variable_keys) + 3] = _extract_lat(matfiles[1])
+    arr_list[length(variable_keys) + 4] = _extract_lon(matfiles[1])
 
-    arr_list[length(variable_keys)+1] = nongrazable
-    arr_list[length(variable_keys)+2] = reef_area
-    arr_list[length(variable_keys)+3] = lat
-    arr_list[length(variable_keys)+4] = lon
+    props = _construct_properties(matfiles, filenames, climate_scenario)
 
     final_dataset = YAXArrays.Dataset(; (variable_names .=> arr_list)..., properties=props)
     savedataset(final_dataset, path=out_path, driver=:netcdf, overwrite=true)
