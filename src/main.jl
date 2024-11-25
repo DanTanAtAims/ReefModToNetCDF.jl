@@ -2,6 +2,7 @@ using FilePaths
 using NetCDF
 using YAXArrays
 using MAT
+using ProgressMeter
 
 """
     _get_matfiles(directory::String, scenario::String)::Vector{String}
@@ -191,7 +192,7 @@ function _extract_lon(mat_dict::Dict{String,Any})::YAXArray
     (n_locations, _) = size(mat_dict["META"]["area_habitat"])
 
     axlist::Tuple = (
-        Dim{:location}(range(1, n_locations, length=n_locations)),
+        Dim{:location}(range(1, n_locations)),
     )
 
     props::Dict{String,Any} = Dict(
@@ -217,7 +218,7 @@ function _extract_lat(mat_dict::Dict{String,Any})::YAXArray
     (n_locations, _) = size(mat_dict["META"]["area_habitat"])
 
     axlist::Tuple = (
-        Dim{:location}(range(1, n_locations, length=n_locations)),
+        Dim{:location}(range(1, n_locations)),
     )
 
     props_lat::Dict{String,Any} = Dict(
@@ -244,7 +245,7 @@ function _extract_reef_area(mat_dict::Dict{String,Any})::YAXArray
     (n_locations, _) = size(mat_dict["META"]["area_habitat"])
 
     axlist::Tuple = (
-        Dim{:location}(range(1, n_locations, length=n_locations)),
+        Dim{:location}(range(1, n_locations)),
     )
 
     props::Dict{String,Any} = Dict(
@@ -270,8 +271,8 @@ function _extract_nongrazable_area(datasets::Vector{Dict{String,Any}})::YAXArray
     (n_scenarios, n_locations) = size(final_arr)
 
     axlist::Tuple = (
-        Dim{:location}(range(1, n_locations, length=n_locations)),
-        Dim{:scenario}(range(1, n_scenarios, length=n_scenarios)),
+        Dim{:location}(range(1, n_locations)),
+        Dim{:scenario}(range(1, n_scenarios)),
     )
 
     props::Dict{String,Any} = Dict(
@@ -348,9 +349,9 @@ function _extract_variable(
     (n_scenarios, n_locations, n_years) = size(final_arr)
 
     axlist::Tuple = (
-        Dim{:timestep}(range(first_year, first_year + n_years - 1, length=n_years)),
-        Dim{:location}(range(1, n_locations, length=n_locations)),
-        Dim{:scenario}(range(1, n_scenarios, length=n_scenarios)),
+        Dim{:timestep}(range(first_year, first_year + n_years - 1)),
+        Dim{:location}(range(1, n_locations)),
+        Dim{:scenario}(range(1, n_scenarios)),
     )
 
     props::Dict{String,Any} = Dict(
@@ -367,10 +368,10 @@ function _extract_variable(
     (n_scenarios, n_locations, n_years, n_groups) = size(final_arr)
 
     axlist::Tuple = (
-        Dim{:timestep}(range(first_year, first_year + n_years - 1, length=n_years)),
-        Dim{:location}(range(1, n_locations, length=n_locations)),
-        Dim{:group}(range(1, n_groups, length=n_groups)),
-        Dim{:scenario}(range(1, n_scenarios, length=n_scenarios)),
+        Dim{:timestep}(range(first_year, first_year + n_years - 1)),
+        Dim{:location}(range(1, n_locations)),
+        Dim{:group}(range(1, n_groups)),
+        Dim{:scenario}(range(1, n_scenarios)),
     )
 
     props::Dict{String,Any} = Dict(
@@ -401,6 +402,7 @@ function to_NetCDF(
 
     arr_list = Vector{YAXArray}(undef, length(variable_keys) + 4)
     first_year::Float64 = matfiles[1]["YEARS"][1, 1]
+    @info "Creating YAXArrays"
     for (ind, key) in enumerate(variable_keys)
         arr_list[ind] = _extract_variable(matfiles, key, first_year)
     end
@@ -413,7 +415,8 @@ function to_NetCDF(
     props = _construct_properties(matfiles, filenames, climate_scenario)
 
     final_dataset = YAXArrays.Dataset(; (variable_names .=> arr_list)..., properties=props)
-    savedataset(final_dataset, path=out_path, driver=:netcdf, overwrite=true)
+    @info "Saving YAXArrays"
+    savedataset(final_dataset, path=out_path, driver=:netcdf, overwrite=true, compress=7)
 
     return nothing
 end
