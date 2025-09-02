@@ -1,9 +1,3 @@
-using FilePaths
-using NetCDF
-using YAXArrays
-using MAT
-using ProgressMeter
-
 """
     _get_matfiles(directory::String, scenario::String)::Vector{String}
 
@@ -21,7 +15,7 @@ end
 Extract the number of scenarios run per earth system model. Typically, all will have the same size.
 Assume the dimensions of DHWs are [scenario ⋅ locations ⋅ timestep ⋅ [taxonamy]]
 """
-function _extract_n_scenarios(dataset::Vector{Dict{String, Any}})::Vector{Int}
+function _extract_n_scenarios(dataset::Vector{Dict{String,Any}})::Vector{Int}
     # ADRIA will always require applied DHWs so we use the shape of DHW matrix
     return [size(ds["record_applied_DHWs"])[1] for ds in dataset]
 end
@@ -38,14 +32,14 @@ function _extract_filename(filepath::String)::String
 end
 
 """
-    _extract_earth_model(original_filename::String)::String 
+    _extract_earth_model(original_filename::String)::String
 
 Extract the name of the earth system model from the filename.
 
 Assumes the following format "*SSP_*<Name of model>.mat"
 """
 function _extract_earth_model(original_filename::String)::String
-    
+
     found = match(r"SSP\d*_(.*)", original_filename)
     if isnothing(found)
         @info "Earth system model name could not be found in given filename, returning \"unknown\"."
@@ -61,13 +55,13 @@ end
 Given the a list of datasets extract the earth model from the filename contained in the metadata.
 If the original filename is missing from metadata fall back to the current filename.
 """
-function _extract_earth_models(dataset::Vector{Dict{String, Any}}, filepaths::Vector{String})::Vector{String}
+function _extract_earth_models(dataset::Vector{Dict{String,Any}}, filepaths::Vector{String})::Vector{String}
     @assert length(dataset) == length(filepaths) "Given list of data sets and list of filepaths have different lengths of $(length(dataset)) and $(length(filepaths)) respectively"
     original_filenames = [_extract_original_filename(ds) for ds in dataset]
-    
+
     # Using filename/path if original name not found in metadata
     earth_models = [
-        _extract_earth_model(extr == "unknown" ? fn : extr ) 
+        _extract_earth_model(extr == "unknown" ? fn : extr)
         for (extr, fn) in zip(original_filenames, filepaths)
     ]
     return earth_models
@@ -123,7 +117,7 @@ function _construct_properties(
     reef_ids = _extract_reef_IDs(dataset[1]) # assume duplicate
 
     n_scenarios::Int = sum(scenario_per_model)
-    n_locations::Int = length(reef_ids) 
+    n_locations::Int = length(reef_ids)
 
     begin_index = 1
     for i ∈ 1:length(filenames)
@@ -156,7 +150,7 @@ end
 
 
 """
-_extract_reef_IDs(mat_dict::Dict{String, Any})::Vetcor{String}
+    _extract_reef_IDs(mat_dict::Dict{String, Any})::Vetcor{String}
 
 Extract Reef IDs from dataset metadata.
 """
@@ -302,7 +296,7 @@ end
     _join_variable_arr(variable_arrs::Vector{Array{<:Real, 3}})::Array{<:Real, 3}
     _join_variable_arr(variable_arrs::Vector{Array{<:Real, 4}})::Array{<:Real, 4}
 
-Concatenate variable arrays together along the scenario dimension. Assumes the following 
+Concatenate variable arrays together along the scenario dimension. Assumes the following
 dimensions.
 
 Dimensions ordering before reordering with standard AIMS formatting.
@@ -315,7 +309,7 @@ function _join_variable_arr(variable_arrs::Vector{<:Array{<:Real}})::Array{<:Rea
     if !all(shps)
         ArgumentError("Variable arrays given are not the same shape. Possible dataset mismatch")
     end
-    
+
     fin = reduce((x, y) -> cat(x, y, dims=1), variable_arrs)
     return fin
 end
@@ -343,7 +337,7 @@ function _extract_variable(
     end
 end
 function _extract_variable(
-    variable_arr::Vector{<:Array{<:Real, 3}}, variable_name::String, first_year::Int
+    variable_arr::Vector{<:Array{<:Real,3}}, variable_name::String, first_year::Int
 )::YAXArray
     final_arr = _join_variable_arr(variable_arr)
     (n_scenarios, n_locations, n_years) = size(final_arr)
@@ -362,7 +356,7 @@ function _extract_variable(
     return YAXArray(axlist, permutedims(final_arr, [3, 2, 1]), props)
 end
 function _extract_variable(
-    variable_arr::Vector{<:Array{<:Real, 4}}, variable_name::String, first_year::Int
+    variable_arr::Vector{<:Array{<:Real,4}}, variable_name::String, first_year::Int
 )::YAXArray
     final_arr = _join_variable_arr(variable_arr)
     (n_scenarios, n_locations, n_years, n_groups) = size(final_arr)
@@ -384,9 +378,9 @@ end
 
 """
     to_NetCDF(
-        filepath::String, 
-        out_path::String, 
-        variable_keys::String, 
+        filepath::String,
+        out_path::String,
+        variable_keys::String,
         variable_names::Vector{Symbol}
     )::Nothing
 """
@@ -407,10 +401,10 @@ function to_NetCDF(
         arr_list[ind] = _extract_variable(matfiles, key, first_year)
     end
 
-    arr_list[length(variable_keys) + 1] = _extract_nongrazable_area(matfiles)
-    arr_list[length(variable_keys) + 2] = _extract_reef_area(matfiles[1]) # asuumed duplicates
-    arr_list[length(variable_keys) + 3] = _extract_lat(matfiles[1])
-    arr_list[length(variable_keys) + 4] = _extract_lon(matfiles[1])
+    arr_list[length(variable_keys)+1] = _extract_nongrazable_area(matfiles)
+    arr_list[length(variable_keys)+2] = _extract_reef_area(matfiles[1]) # asuumed duplicates
+    arr_list[length(variable_keys)+3] = _extract_lat(matfiles[1])
+    arr_list[length(variable_keys)+4] = _extract_lon(matfiles[1])
 
     props = _construct_properties(matfiles, filenames, climate_scenario)
 
@@ -422,7 +416,7 @@ function to_NetCDF(
 end
 
 """
-    function to_NetCDF_seperate(
+    to_NetCDF_seperate(
         directory::String, climate_scenario::String;
         input_write_path::String="", output_write_path::String="", overwrite=false
     )::Nothing
@@ -499,7 +493,7 @@ function to_NetCDF_seperate(
 end
 
 """
-    function to_NetCDF_combined(
+    to_NetCDF_combined(
         directory::String, climate_scenario::String; out_path::String=""
     )::Nothing
 
