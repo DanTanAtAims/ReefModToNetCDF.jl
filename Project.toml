@@ -1,0 +1,17 @@
+name = "ReefModToNetCDF"
+uuid = "f4a904ac-fe9c-4404-a9bb-bcad4f0969e1"
+authors = ["Daniel Tan", "Pedro Ribeiro de Almeida"]
+version = "0.1.0"
+
+[deps]
+FilePaths = "8fc22ac5-c921-52a6-82fd-178b2807b824"
+MAT = "23992714-dd62-5051-b70f-ba57cb901cac"
+NetCDF = "30363a11-5582-574a-97bb-aa9a979735b9"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+YAXArrays = "c21b50f5-aa40-41ea-b809-c0f5e47bfa5c"
+
+[compat]
+FilePaths = "0.9.0"
+MAT = "0.10.7"
+ProgressMeter = "1.11.0"
+YAXArrays = "0.6.1"
