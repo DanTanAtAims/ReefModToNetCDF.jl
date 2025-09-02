@@ -11,7 +11,7 @@ ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 YAXArrays = "c21b50f5-aa40-41ea-b809-c0f5e47bfa5c"
 
 [compat]
-FilePaths = "0.9.0"
-MAT = "0.10.7"
-ProgressMeter = "1.11.0"
-YAXArrays = "0.6.1"
+FilePaths = "0.9"
+MAT = "0.10"
+ProgressMeter = "1.11"
+YAXArrays = "0.6"
